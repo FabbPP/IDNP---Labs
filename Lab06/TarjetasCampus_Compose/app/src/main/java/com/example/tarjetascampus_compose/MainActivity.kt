@@ -25,6 +25,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.tarjetascampus_compose.ui.theme.TarjetasCampus_ComposeTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,7 +39,7 @@ class MainActivity : ComponentActivity() {
             TarjetasCampus_ComposeTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
-                        AppNavigation()
+                        CampusApp()
                     }
                 }
             }
@@ -42,36 +47,50 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-sealed class Screen {
-    object List : Screen()
-    data class Detail(val nombre: String, val descripcion: String, val imagenRes: Int) : Screen()
+sealed class Screen(val route: String) {
+    object Home : Screen("home")
+    object Detalle : Screen("detalle/{nombre}/{descripcion}/{imagenRes}") {
+        fun crearRuta(nombre: String, descripcion: String, imagenRes: Int) =
+            "detalle/$nombre/$descripcion/$imagenRes"
+    }
 }
 
 @Composable
-fun AppNavigation() {
-    var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }
+fun CampusApp() {
+    val navController = rememberNavController()
 
-    when (val screen = currentScreen) {
-        is Screen.List -> {
+    NavHost(navController = navController, startDestination = Screen.Home.route) {
+        composable(Screen.Home.route) {
             PantallaTarjetas(
-                onNavigateToDetail = { nombre, desc, imgRes ->
-                    currentScreen = Screen.Detail(nombre, desc, imgRes)
+                onAbrirDetalle = { nombre, descripcion, imagenRes ->
+                    navController.navigate(Screen.Detalle.crearRuta(nombre, descripcion, imagenRes))
                 }
             )
         }
-        is Screen.Detail -> {
+        composable(
+            route = Screen.Detalle.route,
+            arguments = listOf(
+                navArgument("nombre") { type = NavType.StringType },
+                navArgument("descripcion") { type = NavType.StringType },
+                navArgument("imagenRes") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val nombre = backStackEntry.arguments?.getString("nombre") ?: ""
+            val descripcion = backStackEntry.arguments?.getString("descripcion") ?: ""
+            val imagenRes = backStackEntry.arguments?.getInt("imagenRes") ?: 0
+
             DetalleLugarScreen(
-                nombre = screen.nombre,
-                descripcion = screen.descripcion,
-                imagen = painterResource(id = screen.imagenRes),
-                onBack = { currentScreen = Screen.List }
+                nombre = nombre,
+                descripcion = descripcion,
+                imagen = painterResource(id = imagenRes),
+                onBack = { navController.popBackStack() }
             )
         }
     }
 }
 
 @Composable
-fun PantallaTarjetas(onNavigateToDetail: (String, String, Int) -> Unit = {_,_,_->}) {
+fun PantallaTarjetas(onAbrirDetalle: (String, String, Int) -> Unit = {_,_,_->}) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -79,20 +98,22 @@ fun PantallaTarjetas(onNavigateToDetail: (String, String, Int) -> Unit = {_,_,_-
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Estilo 1: tarjetas con Row (imagen circular + texto)
-        ListaTarjetasLugar(onNavigateToDetail)
+        ListaTarjetasLugar(onAbrirDetalle)
         Spacer(modifier = Modifier.height(8.dp))
         
         // Estilo 2: tarjetas apiladas con Box (imagen de fondo + scrim + texto)
         TarjetaCompacta(
             nombre = "Biblioteca Central",
-            imagen = painterResource(id = R.drawable.biblioteca),
-            onClick = { onNavigateToDetail("Biblioteca Central", "El centro principal de recursos literarios y espacios de estudio silencioso. Cuenta con más de 100,000 ejemplares y salas de lectura grupales.", R.drawable.biblioteca) }
+            descripcion = "Zona de estudio y préstamo de libros",
+            imagenRes = R.drawable.biblioteca,
+            onClick = { onAbrirDetalle("Biblioteca Central", "Zona de estudio y préstamo de libros", R.drawable.biblioteca) }
         )
         Spacer(modifier = Modifier.height(12.dp))
         TarjetaCompacta(
             nombre = "Comedor Universitario",
-            imagen = painterResource(id = R.drawable.comedor),
-            onClick = { onNavigateToDetail("Comedor Universitario", "Servicio de alimentación principal para la comunidad estudiantil. Capacidad amplia y menú variado.", R.drawable.comedor) }
+            descripcion = "Servicio de alimentación principal para la comunidad estudiantil. Capacidad amplia y menú variado.",
+            imagenRes = R.drawable.comedor,
+            onClick = { onAbrirDetalle("Comedor Universitario", "Servicio de alimentación principal para la comunidad estudiantil. Capacidad amplia y menú variado.", R.drawable.comedor) }
         )
     }
 }
@@ -108,7 +129,9 @@ fun TarjetaLugar(
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = colorFondo,
-        modifier = Modifier.clickable { onClick() }
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -141,7 +164,8 @@ fun TarjetaLugar(
 @Composable
 fun TarjetaCompacta(
     nombre: String,
-    imagen: Painter,
+    descripcion: String = "",
+    imagenRes: Int,
     onClick: () -> Unit = {}
 ) {
     Box(
@@ -149,10 +173,10 @@ fun TarjetaCompacta(
             .fillMaxWidth()
             .height(140.dp)
             .clip(RoundedCornerShape(16.dp))
-            .clickable { onClick() }
+            .clickable(onClick = onClick)
     ) {
         Image(
-            painter = imagen,
+            painter = painterResource(id = imagenRes),
             contentDescription = nombre,
             contentScale = ContentScale.Crop,
             modifier = Modifier.matchParentSize()
@@ -175,21 +199,21 @@ fun TarjetaCompacta(
 }
 
 @Composable
-fun ListaTarjetasLugar(onNavigateToDetail: (String, String, Int) -> Unit = {_,_,_->}) {
+fun ListaTarjetasLugar(onAbrirDetalle: (String, String, Int) -> Unit = {_,_,_->}) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TarjetaLugar(
             nombre = "Biblioteca Central",
             descripcion = "Zona de estudio y préstamo de libros",
             imagen = painterResource(id = R.drawable.biblioteca),
             colorFondo = Color(0xFFE3F2FD),
-            onClick = { onNavigateToDetail("Biblioteca Central", "Zona de estudio y préstamo de libros", R.drawable.biblioteca) }
+            onClick = { onAbrirDetalle("Biblioteca Central", "Zona de estudio y préstamo de libros", R.drawable.biblioteca) }
         )
         TarjetaLugar(
             nombre = "Comedor Universitario",
             descripcion = "Servicio de alimentación para estudiantes",
             imagen = painterResource(id = R.drawable.comedor),
             colorFondo = Color(0xFFFFF3E0),
-            onClick = { onNavigateToDetail("Comedor Universitario", "Servicio de alimentación para estudiantes", R.drawable.comedor) }
+            onClick = { onAbrirDetalle("Comedor Universitario", "Servicio de alimentación para estudiantes", R.drawable.comedor) }
         )
     }
 }
