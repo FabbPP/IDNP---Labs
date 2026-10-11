@@ -47,6 +47,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+data class LugarCampus(
+    val id: Int,
+    val nombre: String,
+    val descripcion: String,
+    val imagenRes: Int,
+    val colorFondo: Color,
+    val horario: String,
+    val aforo: String
+)
+
 sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Detalle : Screen("detalle/{nombre}/{descripcion}/{imagenRes}") {
@@ -59,11 +69,19 @@ sealed class Screen(val route: String) {
 fun CampusApp() {
     val navController = rememberNavController()
 
+    val lugares = listOf(
+        LugarCampus(1, "Biblioteca Central", "Zona de estudio, cubículos de investigación y préstamo bibliográfico.", R.drawable.biblioteca, Color(0xFFE3F2FD), "07:00 - 20:00", "Capacidad: 250 personas"),
+        LugarCampus(2, "Comedor Universitario", "Servicio de alimentación balanceada para estudiantes y docentes.", R.drawable.comedor, Color(0xFFFFF3E0), "12:00 - 15:00", "Capacidad: 500 personas"),
+        LugarCampus(3, "Pabellón de Ingeniería de Sistemas", "Aulas de cómputo de alto rendimiento, servidores y laboratorios de software.", R.drawable.biblioteca, Color(0xFFE8F5E9), "07:00 - 22:00", "Capacidad: 300 personas"),
+        LugarCampus(4, "Polideportivo y Auditorio Central", "Espacios para eventos magnos, congresos y actividades deportivas.", R.drawable.comedor, Color(0xFFF3E5F5), "08:00 - 18:00", "Capacidad: 1000 personas")
+    )
+
     NavHost(navController = navController, startDestination = Screen.Home.route) {
         composable(Screen.Home.route) {
-            PantallaTarjetas(
-                onAbrirDetalle = { nombre, descripcion, imagenRes ->
-                    navController.navigate(Screen.Detalle.crearRuta(nombre, descripcion, imagenRes))
+            EdificiosScreen(
+                lugares = lugares,
+                onLugarSelected = { lugar ->
+                    navController.navigate(Screen.Detalle.crearRuta(lugar.nombre, lugar.descripcion, lugar.imagenRes))
                 }
             )
         }
@@ -90,76 +108,128 @@ fun CampusApp() {
 }
 
 @Composable
-fun PantallaTarjetas(onAbrirDetalle: (String, String, Int) -> Unit = {_,_,_->}) {
+fun EdificiosScreen(
+    lugares: List<LugarCampus>,
+    onLugarSelected: (LugarCampus) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Estilo 1: tarjetas con Row (imagen circular + texto)
-        ListaTarjetasLugar(onAbrirDetalle)
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Estilo 2: tarjetas apiladas con Box (imagen de fondo + scrim + texto)
-        TarjetaCompacta(
-            nombre = "Biblioteca Central",
-            descripcion = "Zona de estudio y préstamo de libros",
-            imagenRes = R.drawable.biblioteca,
-            onClick = { onAbrirDetalle("Biblioteca Central", "Zona de estudio y préstamo de libros", R.drawable.biblioteca) }
+        Text(
+            text = "Edificios y Espacios del Campus",
+            fontWeight = FontWeight.Bold,
+            fontSize = 22.sp,
+            color = Color(0xFF1F1F1F)
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        TarjetaCompacta(
-            nombre = "Comedor Universitario",
-            descripcion = "Servicio de alimentación principal para la comunidad estudiantil. Capacidad amplia y menú variado.",
-            imagenRes = R.drawable.comedor,
-            onClick = { onAbrirDetalle("Comedor Universitario", "Servicio de alimentación principal para la comunidad estudiantil. Capacidad amplia y menú variado.", R.drawable.comedor) }
+        Text(
+            text = "Selecciona un lugar para ver detalles e información en tiempo real.",
+            fontSize = 13.sp,
+            color = Color.Gray
         )
+        Spacer(modifier = Modifier.height(4.dp))
+
+        lugares.forEach { lugar ->
+            TarjetaInformativaModerna(
+                nombre = lugar.nombre,
+                categoria = if (lugar.id == 1) "Académico" else if (lugar.id == 2) "Servicios" else if (lugar.id == 3) "Facultad" else "Eventos",
+                aforoTexto = lugar.aforo.replace("Capacidad: ", ""),
+                imagen = painterResource(id = lugar.imagenRes),
+                onClick = { onLugarSelected(lugar) }
+            )
+        }
     }
 }
 
 @Composable
-fun TarjetaLugar(
+fun TarjetaInformativaModerna(
     nombre: String,
-    descripcion: String,
+    categoria: String,
+    aforoTexto: String,
     imagen: Painter,
-    colorFondo: Color,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = colorFondo,
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White,
+        shadowElevation = 4.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable { onClick() }
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Image(
-                painter = imagen,
-                contentDescription = nombre,
-                contentScale = ContentScale.Crop,
+        Column {
+            // Contenedor visual superior con insignia flotante
+            Box(
                 modifier = Modifier
-                    .size(90.dp)
-                    .clip(CircleShape)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
+                    .fillMaxWidth()
+                    .height(130.dp)
+            ) {
+                Image(
+                    painter = imagen,
+                    contentDescription = nombre,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize()
+                )
+                // Scrim sutil
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Color.Black.copy(alpha = 0.20f))
+                )
+                // Insignia / Badge flotante de aforo
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF00897B),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        text = aforoTexto,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            // Cuerpo inferior con categoría, título y acción
+            Column(modifier = Modifier.padding(14.dp)) {
                 Text(
-                    text = nombre,
+                    text = categoria.uppercase(),
+                    color = Color(0xFFC8310E),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
+                    fontSize = 11.sp
                 )
-                Text(
-                    text = descripcion,
-                    fontSize = 14.sp
-                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = nombre,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        color = Color(0xFF212121)
+                    )
+                    Text(
+                        text = "Ver más →",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        color = Color(0xFF1976D2)
+                    )
+                }
             }
         }
     }
 }
+
+
 
 @Composable
 fun TarjetaCompacta(
@@ -198,25 +268,7 @@ fun TarjetaCompacta(
     }
 }
 
-@Composable
-fun ListaTarjetasLugar(onAbrirDetalle: (String, String, Int) -> Unit = {_,_,_->}) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        TarjetaLugar(
-            nombre = "Biblioteca Central",
-            descripcion = "Zona de estudio y préstamo de libros",
-            imagen = painterResource(id = R.drawable.biblioteca),
-            colorFondo = Color(0xFFE3F2FD),
-            onClick = { onAbrirDetalle("Biblioteca Central", "Zona de estudio y préstamo de libros", R.drawable.biblioteca) }
-        )
-        TarjetaLugar(
-            nombre = "Comedor Universitario",
-            descripcion = "Servicio de alimentación para estudiantes",
-            imagen = painterResource(id = R.drawable.comedor),
-            colorFondo = Color(0xFFFFF3E0),
-            onClick = { onAbrirDetalle("Comedor Universitario", "Servicio de alimentación para estudiantes", R.drawable.comedor) }
-        )
-    }
-}
+
 @Composable
 fun DetalleLugarScreen(
     nombre: String,
@@ -345,8 +397,12 @@ fun DetalleLugarScreenPreview() {
 
 @Preview(showBackground = true)
 @Composable
-fun PantallaTarjetasPreview() {
+fun EdificiosScreenPreview() {
+    val lugares = listOf(
+        LugarCampus(1, "Biblioteca Central", "Zona de estudio, cubículos de investigación y préstamo bibliográfico.", R.drawable.biblioteca, Color(0xFFE3F2FD), "07:00 - 20:00", "Capacidad: 250 personas"),
+        LugarCampus(2, "Comedor Universitario", "Servicio de alimentación balanceada para estudiantes y docentes.", R.drawable.comedor, Color(0xFFFFF3E0), "12:00 - 15:00", "Capacidad: 500 personas")
+    )
     TarjetasCampus_ComposeTheme {
-        PantallaTarjetas()
+        EdificiosScreen(lugares = lugares, onLugarSelected = {})
     }
 }
