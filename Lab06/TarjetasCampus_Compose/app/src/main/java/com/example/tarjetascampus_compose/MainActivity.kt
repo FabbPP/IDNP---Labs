@@ -4,22 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.tarjetascampus_compose.ui.theme.TarjetasCampus_ComposeTheme
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,23 +31,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             TarjetasCampus_ComposeTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    Box(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
+                        ListaTarjetasLugar()
+                    }
                 }
             }
         }
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
 @Composable
 fun TarjetaLugar(
     nombre: String,
@@ -97,10 +78,27 @@ fun TarjetaLugar(
         }
     }
 }
+@Composable
+fun ListaTarjetasLugar() {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        TarjetaLugar(
+            nombre = "Biblioteca Central",
+            descripcion = "Zona de estudio y préstamo de libros",
+            imagen = painterResource(id = R.drawable.biblioteca),
+            colorFondo = Color(0xFFE3F2FD)
+        )
+        TarjetaLugar(
+            nombre = "Comedor Universitario",
+            descripcion = "Servicio de alimentación para estudiantes",
+            imagen = painterResource(id = R.drawable.comedor),
+            colorFondo = Color(0xFFFFF3E0)
+        )
+    }
+}
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+fun ListaTarjetasLugarPreview() {
     TarjetasCampus_ComposeTheme {
-        Greeting("Android")
+        ListaTarjetasLugar()
     }
 }
